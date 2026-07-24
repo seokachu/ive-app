@@ -1,15 +1,18 @@
 {
   "expo": {
-    "name": "ive-app",
+    "name": "IVE DIVE",
     "slug": "ive-app",
     "version": "1.0.0",
+    "scheme": "ivedive",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.seokachu.ivedive"
     },
     "android": {
+      "package": "com.seokachu.ivedive",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
