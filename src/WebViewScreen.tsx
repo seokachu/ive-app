@@ -7,11 +7,33 @@ import NetInfo from "@react-native-community/netinfo";
 import { WEB_URL } from "./constants";
 import { isInternalUrl } from "./isInternalUrl";
 import OfflineScreen from "./OfflineScreen";
+import { registerForPushNotificationsAsync, subscribeNotificationNavigation } from "./notifications";
 
 const WebViewScreen = () => {
   const webViewRef = useRef<WebView>(null);
   const canGoBackRef = useRef(false);
+  const webViewReadyRef = useRef(false);
+  const pendingUrlRef = useRef<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
+
+  const navigateTo = useCallback((url: string) => {
+    if (!isInternalUrl(url)) return;
+    const script = `window.location.href = ${JSON.stringify(url)}; true;`;
+    if (webViewReadyRef.current) {
+      webViewRef.current?.injectJavaScript(script);
+    } else {
+      // 콜드 스타트(알림 탭으로 앱 실행) 시에는 WebView 로드 후 이동
+      pendingUrlRef.current = url;
+    }
+  }, []);
+
+  // 푸시 토큰 발급 + 알림 탭 시 해당 페이지로 이동
+  useEffect(() => {
+    registerForPushNotificationsAsync().then((token) => {
+      if (token && __DEV__) console.log("Expo push token:", token);
+    });
+    return subscribeNotificationNavigation(navigateTo);
+  }, [navigateTo]);
 
   // 안드로이드 하드웨어 뒤로가기 → 웹 히스토리 우선, 첫 화면이면 기본 동작(앱 종료)
   useEffect(() => {
@@ -65,6 +87,14 @@ const WebViewScreen = () => {
         style={styles.webview}
         onNavigationStateChange={handleNavigationStateChange}
         onShouldStartLoadWithRequest={handleShouldStartLoad}
+        onLoadEnd={() => {
+          webViewReadyRef.current = true;
+          if (pendingUrlRef.current) {
+            const pendingUrl = pendingUrlRef.current;
+            pendingUrlRef.current = null;
+            webViewRef.current?.injectJavaScript(`window.location.href = ${JSON.stringify(pendingUrl)}; true;`);
+          }
+        }}
         startInLoadingState
         renderLoading={() => (
           <View style={styles.loading}>

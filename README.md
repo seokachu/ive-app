@@ -22,4 +22,13 @@ pnpm start    # Expo Go (실기기 QR)
 
 - 카카오 로그인: WebView 내 OAuth 흐름 정상 여부 (정책상 시스템 브라우저 전환이 필요할 수 있음)
 - 토스 결제: 카드사 앱 호출(intent:// 스킴) 및 결제 완료 리다이렉트 복귀
-- 다음 단계 후보: 푸시 알림(expo-notifications), 딥링크(scheme: `ivedive`), 스플래시/아이콘 브랜딩
+## 푸시 알림
+
+플러밍은 구현 완료: 권한 요청, 안드로이드 채널, Expo 푸시 토큰 발급, 알림 탭 시 `data.url` 페이지로 WebView 이동(콜드 스타트 포함). 실제 수신까지 가려면:
+
+1. `eas init`으로 EAS 프로젝트 연결 (projectId가 있어야 토큰 발급됨)
+2. 개발 빌드 필요 — Expo Go는 원격 푸시 미지원 (SDK 53+)
+3. Android는 FCM(google-services.json), iOS는 APNs 인증 설정
+4. 서버 발송 로직(Expo Push API 호출)은 추후 과제
+
+- 다음 단계 후보: 딥링크(scheme: `ivedive`) 라우팅, EAS 빌드 파이프라인
