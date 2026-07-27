@@ -41,6 +41,12 @@
           "backgroundColor": "#ffffff"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5b14bb67-f6ff-4554-aae9-83c7ecbc4f6d"
+      }
+    },
+    "owner": "seokachu"
   }
 }
