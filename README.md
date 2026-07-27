@@ -24,11 +24,16 @@ pnpm start    # Expo Go (실기기 QR)
 - 토스 결제: 카드사 앱 호출(intent:// 스킴) 및 결제 완료 리다이렉트 복귀
 ## 푸시 알림
 
-플러밍은 구현 완료: 권한 요청, 안드로이드 채널, Expo 푸시 토큰 발급, 알림 탭 시 `data.url` 페이지로 WebView 이동(콜드 스타트 포함). 실제 수신까지 가려면:
+권한 요청, 안드로이드 채널, Expo 푸시 토큰 발급, 알림 탭 시 `data.url` 페이지로 WebView 이동(콜드 스타트 포함)까지 구현. EAS 프로젝트(@seokachu/ive-app)와 Firebase 프로젝트(ive-dive-app)가 연결되어 있다.
 
-1. `eas init`으로 EAS 프로젝트 연결 (projectId가 있어야 토큰 발급됨)
-2. 개발 빌드 필요 — Expo Go는 원격 푸시 미지원 (SDK 53+)
-3. Android는 FCM(google-services.json), iOS는 APNs 인증 설정
-4. 서버 발송 로직(Expo Push API 호출)은 추후 과제
+`google-services.json`은 공개 리포라 커밋하지 않는다. 새로 받으려면:
+
+```bash
+pnpm dlx firebase-tools login
+pnpm dlx firebase-tools apps:sdkconfig ANDROID 1:836315136411:android:ab10379b7f4d837856613e \
+  --project ive-dive-app -o google-services.json
+```
+
+남은 것: FCM V1 서비스 계정 키를 EAS에 업로드(서버 발송용), iOS APNs 설정, 서버 발송 로직.
 
 - 다음 단계 후보: 딥링크(scheme: `ivedive`) 라우팅, EAS 빌드 파이프라인

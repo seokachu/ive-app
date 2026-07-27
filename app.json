@@ -13,6 +13,7 @@
     },
     "android": {
       "package": "com.seokachu.ivedive",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#f465a5",
         "foregroundImage": "./assets/android-icon-foreground.png",

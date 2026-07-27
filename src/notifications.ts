@@ -21,8 +21,9 @@ export const registerForPushNotificationsAsync = async (): Promise<string | null
     });
   }
 
-  // 시뮬레이터에서는 푸시 토큰 발급 불가
-  if (!Device.isDevice) return null;
+  // iOS 시뮬레이터는 푸시 토큰 발급 불가.
+  // Android 에뮬레이터는 Google Play 서비스가 있으면 FCM 토큰 발급이 가능해 허용한다.
+  if (!Device.isDevice && Platform.OS === "ios") return null;
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;

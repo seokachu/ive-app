@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Firebase 설정 (공개 리포에는 커밋하지 않음 — README 참고)
+google-services.json
+firebase-debug.log
