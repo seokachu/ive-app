@@ -14,7 +14,18 @@ const WebViewScreen = () => {
   const canGoBackRef = useRef(false);
   const webViewReadyRef = useRef(false);
   const pendingUrlRef = useRef<string | null>(null);
+  const pushTokenRef = useRef<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
+
+  // 웹이 토큰을 Supabase에 저장할 수 있도록 WebView 전역에 주입
+  const injectPushToken = useCallback(() => {
+    const token = pushTokenRef.current;
+    if (!token || !webViewReadyRef.current) return;
+    const payload = JSON.stringify({ token, platform: Platform.OS });
+    webViewRef.current?.injectJavaScript(
+      `window.__IVE_PUSH__ = ${payload}; window.dispatchEvent(new Event("ive-push-token")); true;`,
+    );
+  }, []);
 
   const navigateTo = useCallback((url: string) => {
     if (!isInternalUrl(url)) return;
@@ -30,10 +41,13 @@ const WebViewScreen = () => {
   // 푸시 토큰 발급 + 알림 탭 시 해당 페이지로 이동
   useEffect(() => {
     registerForPushNotificationsAsync().then((token) => {
-      if (token && __DEV__) console.log("Expo push token:", token);
+      if (!token) return;
+      if (__DEV__) console.log("Expo push token:", token);
+      pushTokenRef.current = token;
+      injectPushToken();
     });
     return subscribeNotificationNavigation(navigateTo);
-  }, [navigateTo]);
+  }, [navigateTo, injectPushToken]);
 
   // 안드로이드 하드웨어 뒤로가기 → 웹 히스토리 우선, 첫 화면이면 기본 동작(앱 종료)
   useEffect(() => {
@@ -89,6 +103,7 @@ const WebViewScreen = () => {
         onShouldStartLoadWithRequest={handleShouldStartLoad}
         onLoadEnd={() => {
           webViewReadyRef.current = true;
+          injectPushToken();
           if (pendingUrlRef.current) {
             const pendingUrl = pendingUrlRef.current;
             pendingUrlRef.current = null;
