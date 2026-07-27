@@ -34,6 +34,13 @@ pnpm dlx firebase-tools apps:sdkconfig ANDROID 1:836315136411:android:ab10379b7f
   --project ive-dive-app -o google-services.json
 ```
 
-남은 것: FCM V1 서비스 계정 키를 EAS에 업로드(서버 발송용), iOS APNs 설정, 서버 발송 로직.
+FCM V1 서비스 계정 키까지 EAS에 등록되어 **Android 푸시는 발송→수신→탭 이동까지 검증 완료** (에뮬레이터 기준). 테스트 발송:
+
+```bash
+curl -X POST https://exp.host/--/api/v2/push/send -H "Content-Type: application/json" \
+  -d '{"to":"<ExponentPushToken>","title":"제목","body":"내용","data":{"url":"https://ive-three.vercel.app/board"}}'
+```
+
+남은 것: iOS APNs 설정(Apple Developer Program 필요), 서버 발송 로직(토큰 저장 + 이벤트 연동), 실기기 검증.
 
 - 다음 단계 후보: 딥링크(scheme: `ivedive`) 라우팅, EAS 빌드 파이프라인

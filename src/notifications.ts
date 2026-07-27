@@ -54,11 +54,13 @@ const extractNotificationUrl = (response: Notifications.NotificationResponse | n
 export const subscribeNotificationNavigation = (onNavigate: (url: string) => void) => {
   Notifications.getLastNotificationResponseAsync().then((response) => {
     const url = extractNotificationUrl(response);
+    if (__DEV__) console.log("[push] last response:", JSON.stringify(response?.notification.request.content.data ?? null));
     if (url) onNavigate(url);
   });
 
   const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
     const url = extractNotificationUrl(response);
+    if (__DEV__) console.log("[push] tap response:", JSON.stringify(response.notification.request.content.data ?? null));
     if (url) onNavigate(url);
   });
 
