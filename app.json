@@ -14,6 +14,19 @@
     "android": {
       "package": "com.seokachu.ivedive",
       "googleServicesFile": "./google-services.json",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "ive-three.vercel.app"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#f465a5",
         "foregroundImage": "./assets/android-icon-foreground.png",

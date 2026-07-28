@@ -49,6 +49,15 @@ const WebViewScreen = () => {
     return subscribeNotificationNavigation(navigateTo);
   }, [navigateTo, injectPushToken]);
 
+  // App Links로 앱이 열렸을 때(결제 후 복귀 등) 해당 페이지로 이동
+  useEffect(() => {
+    Linking.getInitialURL().then((url) => {
+      if (url) navigateTo(url);
+    });
+    const subscription = Linking.addEventListener("url", ({ url }) => navigateTo(url));
+    return () => subscription.remove();
+  }, [navigateTo]);
+
   // 안드로이드 하드웨어 뒤로가기 → 웹 히스토리 우선, 첫 화면이면 기본 동작(앱 종료)
   useEffect(() => {
     if (Platform.OS !== "android") return;
