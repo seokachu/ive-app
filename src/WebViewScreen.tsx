@@ -134,6 +134,10 @@ const WebViewScreen = () => {
         ref={webViewRef}
         source={{ uri: WEB_URL }}
         style={styles.webview}
+        // 기본 originWhitelist(http/https)는 intent:// 등 앱 호출 스킴을
+        // onShouldStartLoadWithRequest에 도달하기 전에 차단한다.
+        // 전부 통과시키고 스킴 분기는 우리 핸들러에서 처리한다.
+        originWhitelist={["*"]}
         onNavigationStateChange={handleNavigationStateChange}
         onShouldStartLoadWithRequest={handleShouldStartLoad}
         onLoadEnd={() => {
