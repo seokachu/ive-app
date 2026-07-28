@@ -9,6 +9,23 @@ import { isInternalUrl } from "./isInternalUrl";
 import OfflineScreen from "./OfflineScreen";
 import { registerForPushNotificationsAsync, subscribeNotificationNavigation } from "./notifications";
 
+// intent:// 스킴(토스/카드사 앱 호출)을 실제 앱 스킴으로 변환해 연다.
+// 해당 앱이 없으면 Play 스토어로 보낸다.
+const openIntentUrl = async (url: string) => {
+  const scheme = url.match(/scheme=([^;]+)/)?.[1];
+  const packageName = url.match(/package=([^;]+)/)?.[1];
+  const appUrl = scheme ? url.replace(/^intent:\/\//, `${scheme}://`).split("#Intent")[0] : null;
+
+  try {
+    if (!appUrl) throw new Error("scheme 정보 없음");
+    await Linking.openURL(appUrl);
+  } catch {
+    if (packageName) {
+      Linking.openURL(`market://details?id=${packageName}`).catch(() => {});
+    }
+  }
+};
+
 const WebViewScreen = () => {
   const webViewRef = useRef<WebView>(null);
   const canGoBackRef = useRef(false);
@@ -83,12 +100,18 @@ const WebViewScreen = () => {
     canGoBackRef.current = navigation.canGoBack;
   }, []);
 
-  // 서비스/인증/결제 도메인은 WebView 안에서, 그 외 외부 링크는 시스템 브라우저로
+  // 서비스/인증/결제 도메인은 WebView 안에서, 앱 호출 스킴은 해당 앱으로,
+  // 그 외 외부 링크는 시스템 브라우저로
   const handleShouldStartLoad = useCallback((request: { url: string }) => {
     if (isInternalUrl(request.url)) return true;
 
+    if (request.url.startsWith("intent://")) {
+      openIntentUrl(request.url);
+      return false;
+    }
+
     Linking.openURL(request.url).catch(() => {
-      // 열 수 없는 스킴(intent:// 등)은 조용히 무시
+      // 열 수 없는 스킴은 조용히 무시
     });
     return false;
   }, []);
@@ -133,6 +156,9 @@ const WebViewScreen = () => {
         javaScriptEnabled
         domStorageEnabled
         sharedCookiesEnabled
+        // 결제창 등 window.open을 같은 WebView에서 열어 시스템 브라우저로 새지 않게 한다
+        setSupportMultipleWindows={false}
+        javaScriptCanOpenWindowsAutomatically
       />
       {isOffline && <OfflineScreen onRetry={handleRetry} />}
     </SafeAreaView>
