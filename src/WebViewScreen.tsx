@@ -100,10 +100,13 @@ const WebViewScreen = () => {
     canGoBackRef.current = navigation.canGoBack;
   }, []);
 
-  // 서비스/인증/결제 도메인은 WebView 안에서, 앱 호출 스킴은 해당 앱으로,
-  // 그 외 외부 링크는 시스템 브라우저로
+  // http/https는 전부 WebView 안에서 처리한다. 결제(토스→카드사 인증→PG 중계)가
+  // 여러 외부 도메인을 경유하므로, 허용 목록 방식은 흐름 중간에 브라우저로 새어
+  // 세션이 끊긴다. 앱 호출 스킴(intent:// 등)만 밖으로 보낸다.
   const handleShouldStartLoad = useCallback((request: { url: string }) => {
-    if (isInternalUrl(request.url)) return true;
+    if (request.url.startsWith("http://") || request.url.startsWith("https://")) {
+      return true;
+    }
 
     if (request.url.startsWith("intent://")) {
       openIntentUrl(request.url);
