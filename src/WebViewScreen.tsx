@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, BackHandler, Linking, Platform, StyleSheet, View } from "react-native";
+import { ActivityIndicator, BackHandler, Linking, Platform, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
@@ -46,6 +46,20 @@ const WebViewScreen = () => {
     } catch {
       //웹에서 오는 다른 형식의 메시지는 무시
     }
+  }, []);
+
+  //Android 당겨서 새로고침 — WebView 자체 pullToRefreshEnabled는 iOS 전용이라
+  //ScrollView + RefreshControl로 감싸고, 웹 스크롤이 최상단일 때만 제스처를 활성화한다
+  const [refreshing, setRefreshing] = useState(false);
+  const [pullEnabled, setPullEnabled] = useState(true);
+
+  const handleWebViewScroll = useCallback((event: { nativeEvent: { contentOffset: { y: number } } }) => {
+    setPullEnabled(event.nativeEvent.contentOffset.y <= 0);
+  }, []);
+
+  const handlePullRefresh = useCallback(() => {
+    setRefreshing(true);
+    webViewRef.current?.reload();
   }, []);
 
   // 웹이 토큰을 Supabase에 저장할 수 있도록 WebView 전역에 주입
@@ -142,10 +156,8 @@ const WebViewScreen = () => {
     }
   }, []);
 
-  return (
-    <SafeAreaView style={[styles.container, isDarkWeb && styles.containerDark]} edges={["top", "bottom"]}>
-      <StatusBar style={isDarkWeb ? "light" : "dark"} />
-      <WebView
+  const webView = (
+    <WebView
         ref={webViewRef}
         source={{ uri: WEB_URL }}
         style={styles.webview}
@@ -156,8 +168,10 @@ const WebViewScreen = () => {
         originWhitelist={["*"]}
         onNavigationStateChange={handleNavigationStateChange}
         onShouldStartLoadWithRequest={handleShouldStartLoad}
+        onScroll={Platform.OS === "android" ? handleWebViewScroll : undefined}
         onLoadEnd={() => {
           webViewReadyRef.current = true;
+          setRefreshing(false);
           injectPushToken();
           if (pendingUrlRef.current) {
             const pendingUrl = pendingUrlRef.current;
@@ -183,6 +197,30 @@ const WebViewScreen = () => {
         setSupportMultipleWindows={false}
         javaScriptCanOpenWindowsAutomatically
       />
+  );
+
+  return (
+    <SafeAreaView style={[styles.container, isDarkWeb && styles.containerDark]} edges={["top", "bottom"]}>
+      <StatusBar style={isDarkWeb ? "light" : "dark"} />
+      {Platform.OS === "android" ? (
+        <ScrollView
+          style={styles.webview}
+          contentContainerStyle={styles.pullContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handlePullRefresh}
+              enabled={pullEnabled}
+              colors={["#db97e9"]}
+              progressBackgroundColor={isDarkWeb ? "#1e1e21" : "#ffffff"}
+            />
+          }
+        >
+          {webView}
+        </ScrollView>
+      ) : (
+        webView
+      )}
       {isOffline && <OfflineScreen onRetry={handleRetry} />}
     </SafeAreaView>
   );
@@ -199,6 +237,9 @@ const styles = StyleSheet.create({
   },
   webview: {
     flex: 1,
+  },
+  pullContainer: {
+    flexGrow: 1,
   },
   loading: {
     position: "absolute",
