@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, BackHandler, Linking, Platform, StyleSheet, View } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
-import type { WebViewNavigation } from "react-native-webview";
+import type { WebViewMessageEvent, WebViewNavigation } from "react-native-webview";
 import NetInfo from "@react-native-community/netinfo";
 import { WEB_URL } from "./constants";
 import { isInternalUrl } from "./isInternalUrl";
@@ -33,6 +34,19 @@ const WebViewScreen = () => {
   const pendingUrlRef = useRef<string | null>(null);
   const pushTokenRef = useRef<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
+  //웹(ThemeBridge)이 postMessage로 알려주는 현재 테마 — 네이티브 셸(배경·상태바)을 맞춘다
+  const [isDarkWeb, setIsDarkWeb] = useState(false);
+
+  const handleMessage = useCallback((event: WebViewMessageEvent) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data?.type === "theme") {
+        setIsDarkWeb(data.value === "dark");
+      }
+    } catch {
+      //웹에서 오는 다른 형식의 메시지는 무시
+    }
+  }, []);
 
   // 웹이 토큰을 Supabase에 저장할 수 있도록 WebView 전역에 주입
   const injectPushToken = useCallback(() => {
@@ -129,11 +143,13 @@ const WebViewScreen = () => {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView style={[styles.container, isDarkWeb && styles.containerDark]} edges={["top", "bottom"]}>
+      <StatusBar style={isDarkWeb ? "light" : "dark"} />
       <WebView
         ref={webViewRef}
         source={{ uri: WEB_URL }}
         style={styles.webview}
+        onMessage={handleMessage}
         // 기본 originWhitelist(http/https)는 intent:// 등 앱 호출 스킴을
         // onShouldStartLoadWithRequest에 도달하기 전에 차단한다.
         // 전부 통과시키고 스킴 분기는 우리 핸들러에서 처리한다.
@@ -151,8 +167,8 @@ const WebViewScreen = () => {
         }}
         startInLoadingState
         renderLoading={() => (
-          <View style={styles.loading}>
-            <ActivityIndicator size="large" color="#111111" />
+          <View style={[styles.loading, isDarkWeb && styles.loadingDark]}>
+            <ActivityIndicator size="large" color={isDarkWeb ? "#f4f4f5" : "#111111"} />
           </View>
         )}
         // iOS: 스와이프로 뒤로/앞으로, 당겨서 새로고침
@@ -177,6 +193,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#ffffff",
   },
+  //웹 다크 테마와 동일한 배경 (design-system §1-3)
+  containerDark: {
+    backgroundColor: "#1b1b1f",
+  },
   webview: {
     flex: 1,
   },
@@ -189,6 +209,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#ffffff",
+  },
+  loadingDark: {
+    backgroundColor: "#1b1b1f",
   },
 });
 
