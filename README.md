@@ -79,36 +79,3 @@ Android 폰 카메라로 QR을 찍거나, 아래 링크로 받는다.
 | [docs/decisions.md](docs/decisions.md) | 기술 의사결정 — 하이브리드 vs PWA, FCM 이유, 수신자 설계 등 |
 | [docs/webview-payment-debugging.md](docs/webview-payment-debugging.md) | 결제 디버깅 기록 — 크롬 이탈, SameSite, originWhitelist |
 | [웹 docs/push-notifications.md](https://github.com/seokachu/IVE/blob/main/docs/push-notifications.md) | 푸시 아키텍처 + 설계 결정 + 예상 Q&A |
-
-## 실행
-
-```bash
-pnpm install
-pnpm android   # 로컬 빌드 + 에뮬레이터/기기 실행 (Android Studio 필요)
-pnpm start     # 개발 서버만
-```
-
-- 설치용 APK: `npx expo prebuild -p android` 후 `cd android && ./gradlew assembleRelease`
-  → `android/app/build/outputs/apk/release/app-release.apk`
-  (릴리즈 배포 시 `ive-dive.apk`로 이름을 바꿔 GitHub Releases에 올린다 — QR·뱃지가
-  `releases/latest` 고정 링크를 쓰기 때문)
-- `google-services.json`은 커밋하지 않음 — 재발급:
-  ```bash
-  pnpm dlx firebase-tools apps:sdkconfig ANDROID 1:836315136411:android:ab10379b7f4d837856613e \
-    --project ive-dive-app -o google-services.json
-  ```
-
-## 데모 시나리오 (시연용)
-
-1. **앱 실행** — 그라데이션 브랜드 스플래시 → 웹이 WebView로 로드
-2. **푸시** — 다른 계정으로 웹에서 댓글 작성 → 몇 초 내 기기에 알림 도착
-   → 탭하면 해당 게시글로 이동 (좋아요 알림도 동일)
-3. **수신 설정** — 마이페이지 토글 OFF → 댓글 → 알림 없음 → ON 복구
-4. **결제** — 굿즈샵 → 카드 결제 → 카드사 앱 인증 → 앱으로 복귀 → 성공 페이지
-5. **뒤로가기** — 하드웨어 백 버튼이 웹 히스토리를 타고 이동, 첫 화면에서는 두 번 눌러 종료
-
-## 남은 로드맵
-
-- iOS 지원 (Apple Developer Program 필요 — APNs 설정)
-- 알림 종류별 수신 설정 세분화
-- 플레이스토어 배포 (EAS production 빌드, 릴리즈 서명 키로 assetlinks 갱신)
