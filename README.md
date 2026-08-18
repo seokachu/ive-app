@@ -11,7 +11,7 @@
 ![React Native 0.86](https://img.shields.io/badge/React%20Native%200.86-61DAFB?logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 ![FCM](https://img.shields.io/badge/FCM%20Push-FFCA28?logo=firebase&logoColor=black)
-[![Android APK](https://img.shields.io/badge/Android%20APK-다운로드-F465A5?logo=android&logoColor=white)](https://github.com/seokachu/ive-app/releases/latest/download/ive-dive.apk)
+[![Android APK](https://img.shields.io/badge/Android%20APK-다운로드-F465A5?logo=android&logoColor=white)](https://ive-three.vercel.app/download)
 
 | 메인 (WebView) | 자유게시판 | 푸시 알림 |
 |:---:|:---:|:---:|
@@ -23,11 +23,13 @@
 
 Android 폰 카메라로 QR을 찍거나, 아래 링크로 받는다.
 
-**[⬇ ive-dive.apk 다운로드](https://github.com/seokachu/ive-app/releases/latest/download/ive-dive.apk)**
+**[⬇ ive-dive.apk 다운로드](https://ive-three.vercel.app/download)**
 
 - 배포된 웹을 담는 하이브리드 앱이라, 웹이 갱신되면 앱도 재설치 없이 함께 갱신된다
 - 설치 시 "출처를 알 수 없는 앱" 허용이 필요하다 (스토어 외 배포)
-- 링크는 항상 [최신 릴리즈](https://github.com/seokachu/ive-app/releases/latest)의 APK를 가리킨다
+- 링크는 웹의 다운로드 페이지(`/download`)를 거친다 — 카카오톡·QR 스캐너 등 **인앱
+  브라우저는 APK 설치가 막히므로** 감지해서 외부 브라우저로 자동 전환하고, 실제 파일은
+  항상 [최신 릴리즈](https://github.com/seokachu/ive-app/releases/latest)의 APK를 받는다
 
 <br clear="right" />
 
