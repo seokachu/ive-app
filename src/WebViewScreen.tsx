@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, BackHandler, Linking, Platform, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { BackHandler, Image, Linking, Platform, RefreshControl, ScrollView, StyleSheet, Text, ToastAndroid, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
@@ -36,6 +36,8 @@ const WebViewScreen = () => {
   const [isOffline, setIsOffline] = useState(false);
   //웹(ThemeBridge)이 postMessage로 알려주는 현재 테마 — 네이티브 셸(배경·상태바)을 맞춘다
   const [isDarkWeb, setIsDarkWeb] = useState(false);
+  //첫 로딩이 끝날 때까지 브랜드 스플래시 오버레이 표시
+  const [webLoaded, setWebLoaded] = useState(false);
 
   const handleMessage = useCallback((event: WebViewMessageEvent) => {
     try {
@@ -103,7 +105,9 @@ const WebViewScreen = () => {
     return () => subscription.remove();
   }, [navigateTo]);
 
-  // 안드로이드 하드웨어 뒤로가기 → 웹 히스토리 우선, 첫 화면이면 기본 동작(앱 종료)
+  // 안드로이드 하드웨어 뒤로가기 → 웹 히스토리 우선,
+  // 첫 화면이면 2초 안에 한 번 더 눌러야 종료 (실수로 앱이 꺼지는 것 방지)
+  const lastBackPressRef = useRef(0);
   useEffect(() => {
     if (Platform.OS !== "android") return;
 
@@ -112,7 +116,14 @@ const WebViewScreen = () => {
         webViewRef.current?.goBack();
         return true;
       }
-      return false;
+
+      const now = Date.now();
+      if (now - lastBackPressRef.current <= 2000) {
+        return false; // 기본 동작 = 앱 종료
+      }
+      lastBackPressRef.current = now;
+      ToastAndroid.show("한 번 더 누르면 앱이 종료돼요", ToastAndroid.SHORT);
+      return true;
     });
     return () => subscription.remove();
   }, []);
@@ -171,6 +182,7 @@ const WebViewScreen = () => {
         onScroll={Platform.OS === "android" ? handleWebViewScroll : undefined}
         onLoadEnd={() => {
           webViewReadyRef.current = true;
+          setWebLoaded(true);
           setRefreshing(false);
           injectPushToken();
           if (pendingUrlRef.current) {
@@ -179,12 +191,6 @@ const WebViewScreen = () => {
             webViewRef.current?.injectJavaScript(`window.location.href = ${JSON.stringify(pendingUrl)}; true;`);
           }
         }}
-        startInLoadingState
-        renderLoading={() => (
-          <View style={[styles.loading, isDarkWeb && styles.loadingDark]}>
-            <ActivityIndicator size="large" color={isDarkWeb ? "#f4f4f5" : "#111111"} />
-          </View>
-        )}
         // iOS: 스와이프로 뒤로/앞으로, 당겨서 새로고침
         allowsBackForwardNavigationGestures
         pullToRefreshEnabled
@@ -221,6 +227,15 @@ const WebViewScreen = () => {
       ) : (
         webView
       )}
+      {/* 첫 로딩 동안 시스템 스플래시와 이어지는 브랜드 스플래시 —
+          absolute 자식은 SafeAreaView 패딩을 무시하므로 상태바·내비게이션 영역까지 덮는다 */}
+      {!webLoaded && (
+        <View style={styles.splash} pointerEvents="none">
+          <Image source={require("../assets/splash-gradient.png")} style={styles.splashBackground} resizeMode="cover" />
+          <Image source={require("../assets/splash-logo.png")} style={styles.splashLogo} resizeMode="contain" />
+          <Text style={styles.splashTagline}>IVE FAN COMMUNITY</Text>
+        </View>
+      )}
       {isOffline && <OfflineScreen onRetry={handleRetry} />}
     </SafeAreaView>
   );
@@ -241,7 +256,7 @@ const styles = StyleSheet.create({
   pullContainer: {
     flexGrow: 1,
   },
-  loading: {
+  splash: {
     position: "absolute",
     top: 0,
     left: 0,
@@ -249,10 +264,26 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#ffffff",
   },
-  loadingDark: {
-    backgroundColor: "#1b1b1f",
+  splashBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+  },
+  splashLogo: {
+    width: 110,
+    height: 134,
+  },
+  splashTagline: {
+    marginTop: 20,
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "600",
+    letterSpacing: 4,
   },
 });
 
