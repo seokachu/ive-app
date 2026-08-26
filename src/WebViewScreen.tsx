@@ -34,6 +34,11 @@ const WebViewScreen = () => {
   const pendingUrlRef = useRef<string | null>(null);
   const pushTokenRef = useRef<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
+  //WebView 로드 실패(오프라인·타임아웃) — 내장 에러 페이지 대신 우리 화면을 띄운다
+  const [loadFailed, setLoadFailed] = useState(false);
+  const loadFailedRef = useRef(false);
+  //"홈으로 이동" 시 WebView를 다시 마운트해 WEB_URL부터 로드
+  const [webKey, setWebKey] = useState(0);
   //웹(ThemeBridge)이 postMessage로 알려주는 현재 테마 — 네이티브 셸(배경·상태바)을 맞춘다
   const [isDarkWeb, setIsDarkWeb] = useState(false);
   //첫 로딩이 끝날 때까지 브랜드 스플래시 오버레이 표시
@@ -128,9 +133,16 @@ const WebViewScreen = () => {
     return () => subscription.remove();
   }, []);
 
+  // 연결이 끊기면 오프라인 화면, 복구되면 실패했던 페이지를 자동으로 다시 불러온다
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
-      setIsOffline(!(state.isConnected && state.isInternetReachable !== false));
+      const online = Boolean(state.isConnected && state.isInternetReachable !== false);
+      setIsOffline(!online);
+      if (online && loadFailedRef.current) {
+        loadFailedRef.current = false;
+        setLoadFailed(false);
+        webViewRef.current?.reload();
+      }
     });
     return unsubscribe;
   }, []);
@@ -163,12 +175,28 @@ const WebViewScreen = () => {
     const online = Boolean(state.isConnected && state.isInternetReachable !== false);
     setIsOffline(!online);
     if (online) {
+      loadFailedRef.current = false;
+      setLoadFailed(false);
       webViewRef.current?.reload();
     }
   }, []);
 
+  const handleGoHome = useCallback(() => {
+    loadFailedRef.current = false;
+    setLoadFailed(false);
+    setWebKey((key) => key + 1);
+  }, []);
+
+  const handleLoadError = useCallback(() => {
+    loadFailedRef.current = true;
+    setLoadFailed(true);
+    setWebLoaded(true);
+    setRefreshing(false);
+  }, []);
+
   const webView = (
     <WebView
+        key={webKey}
         ref={webViewRef}
         source={{ uri: WEB_URL }}
         style={styles.webview}
@@ -180,6 +208,13 @@ const WebViewScreen = () => {
         onNavigationStateChange={handleNavigationStateChange}
         onShouldStartLoadWithRequest={handleShouldStartLoad}
         onScroll={Platform.OS === "android" ? handleWebViewScroll : undefined}
+        // 로드 실패 시 WebView 내장 에러 페이지 대신 빈 화면 → 그 위에 OfflineScreen을 덮는다
+        onError={handleLoadError}
+        renderError={() => <View style={[styles.errorFallback, isDarkWeb && styles.containerDark]} />}
+        onLoad={() => {
+          loadFailedRef.current = false;
+          setLoadFailed(false);
+        }}
         onLoadEnd={() => {
           webViewReadyRef.current = true;
           setWebLoaded(true);
@@ -236,7 +271,9 @@ const WebViewScreen = () => {
           <Text style={styles.splashTagline}>IVE FAN COMMUNITY</Text>
         </View>
       )}
-      {isOffline && <OfflineScreen onRetry={handleRetry} />}
+      {(isOffline || loadFailed) && (
+        <OfflineScreen onRetry={handleRetry} onGoHome={handleGoHome} isDark={isDarkWeb} />
+      )}
     </SafeAreaView>
   );
 };
@@ -252,6 +289,10 @@ const styles = StyleSheet.create({
   },
   webview: {
     flex: 1,
+  },
+  errorFallback: {
+    flex: 1,
+    backgroundColor: "#ffffff",
   },
   pullContainer: {
     flexGrow: 1,

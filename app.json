@@ -2,7 +2,7 @@
   "expo": {
     "name": "IVE DIVE",
     "slug": "ive-app",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "scheme": "ivedive",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,6 +13,7 @@
     },
     "android": {
       "package": "com.seokachu.ivedive",
+      "versionCode": 2,
       "googleServicesFile": "./google-services.json",
       "intentFilters": [
         {
