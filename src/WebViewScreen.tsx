@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BackHandler, Image, Linking, Platform, RefreshControl, ScrollView, StyleSheet, Text, ToastAndroid, View } from "react-native";
+import { ActivityIndicator, BackHandler, Image, Linking, Platform, RefreshControl, ScrollView, StyleSheet, Text, ToastAndroid, View } from "react-native";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
@@ -27,6 +28,22 @@ const openIntentUrl = async (url: string) => {
   }
 };
 
+/** 로드가 이만큼 길어지면 스플래시에 스피너를 붙인다 — 멈춘 게 아니라는 신호 */
+const SPLASH_SPINNER_MS = 10000;
+/** 이벤트가 전부 누락돼도 스플래시에 갇히지 않게 하는 최후 안전장치 */
+const SPLASH_SAFETY_MS = 15000;
+
+/**
+ * 네이티브 스플래시(로고만)를 내린다.
+ *
+ * App.tsx 가 자동 숨김을 막아 뒀기 때문에 반드시 누군가는 이걸 불러야 한다 —
+ * 오버레이의 첫 레이아웃 · 로드 완료 · 로드 실패 · 최후 안전장치 네 곳에서
+ * 부른다. 하나라도 빠지면 스플래시에 갇힌다. 여러 번 불러도 안전하다.
+ */
+const hideNativeSplash = () => {
+  SplashScreen.hideAsync().catch(() => {});
+};
+
 const WebViewScreen = () => {
   const webViewRef = useRef<WebView>(null);
   const canGoBackRef = useRef(false);
@@ -43,6 +60,26 @@ const WebViewScreen = () => {
   const [isDarkWeb, setIsDarkWeb] = useState(false);
   //첫 로딩이 끝날 때까지 브랜드 스플래시 오버레이 표시
   const [webLoaded, setWebLoaded] = useState(false);
+  //로드가 SPLASH_SPINNER_MS 를 넘겼는가 — 그때만 오버레이에 스피너를 붙인다.
+  //평소에는 브랜드 화면만 보이고, 오래 걸릴 때만 "멈춘 게 아니다"를 알린다
+  const [slowLoad, setSlowLoad] = useState(false);
+  const splashVisible = !webLoaded && !loadFailed;
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSlowLoad(true), SPLASH_SPINNER_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // 자동 숨김을 막아 뒀으므로 네이티브 스플래시는 우리가 안 내리면 영영 남는다.
+  // onLoadEnd·onError 가 전부 누락되는 경우까지 대비한 마지막 탈출구.
+  useEffect(() => {
+    if (webLoaded) return;
+    const timer = setTimeout(() => {
+      hideNativeSplash();
+      setWebLoaded(true);
+    }, SPLASH_SAFETY_MS);
+    return () => clearTimeout(timer);
+  }, [webLoaded]);
 
   const handleMessage = useCallback((event: WebViewMessageEvent) => {
     try {
@@ -188,6 +225,8 @@ const WebViewScreen = () => {
   }, []);
 
   const handleLoadError = useCallback(() => {
+    //오프라인 화면이 스플래시 뒤에 가려지지 않게 먼저 내린다
+    hideNativeSplash();
     loadFailedRef.current = true;
     setLoadFailed(true);
     setWebLoaded(true);
@@ -216,6 +255,8 @@ const WebViewScreen = () => {
           setLoadFailed(false);
         }}
         onLoadEnd={() => {
+          //최소 노출 시간 없이, 웹 로드가 끝나는 즉시 오버레이를 걷는다
+          hideNativeSplash();
           webViewReadyRef.current = true;
           setWebLoaded(true);
           setRefreshing(false);
@@ -234,6 +275,11 @@ const WebViewScreen = () => {
         javaScriptEnabled
         domStorageEnabled
         sharedCookiesEnabled
+        // 메인 히어로의 유튜브 배경 영상은 음소거 자동재생이다. react-native-webview 의
+        // mediaPlaybackRequiresUserAction 기본값이 true 라 웹에서 되던 자동재생이 앱에서만
+        // 막혀 썸네일 폴백만 보였다. iOS 는 인라인 재생까지 켜야 전체화면으로 튀지 않는다.
+        mediaPlaybackRequiresUserAction={false}
+        allowsInlineMediaPlayback
         // 결제창 등 window.open을 같은 WebView에서 열어 시스템 브라우저로 새지 않게 한다
         setSupportMultipleWindows={false}
         javaScriptCanOpenWindowsAutomatically
@@ -263,12 +309,14 @@ const WebViewScreen = () => {
         webView
       )}
       {/* 첫 로딩 동안 시스템 스플래시와 이어지는 브랜드 스플래시 —
-          absolute 자식은 SafeAreaView 패딩을 무시하므로 상태바·내비게이션 영역까지 덮는다 */}
-      {!webLoaded && (
-        <View style={styles.splash} pointerEvents="none">
+          absolute 자식은 SafeAreaView 패딩을 무시하므로 상태바·내비게이션 영역까지 덮는다.
+          첫 onLayout 에서 네이티브를 내려 로고 → 로고+타이틀이 끊김 없이 이어진다 */}
+      {splashVisible && (
+        <View style={styles.splash} pointerEvents="none" onLayout={hideNativeSplash}>
           <Image source={require("../assets/splash-gradient.png")} style={styles.splashBackground} resizeMode="cover" />
           <Image source={require("../assets/splash-logo.png")} style={styles.splashLogo} resizeMode="contain" />
           <Text style={styles.splashTagline}>IVE FAN COMMUNITY</Text>
+          {slowLoad && <ActivityIndicator size="small" color="#ffffff" style={styles.splashSpinner} />}
         </View>
       )}
       {(isOffline || loadFailed) && (
@@ -319,8 +367,18 @@ const styles = StyleSheet.create({
     width: 110,
     height: 134,
   },
+  //브랜드 로크업을 밀어내지 않도록 화면 아래에 따로 띄운다
+  splashSpinner: {
+    position: "absolute",
+    bottom: 96,
+  },
+  //태그라인을 흐름에서 빼 로고만 화면 정중앙에 오게 한다 — 네이티브 스플래시는
+  //아이콘을 창 정중앙에 두므로, 로고+태그라인을 묶어 정렬하면 로고가 19dp 위로 밀려
+  //이음매에서 로고가 아래로 툭 떨어진다. top 50% + (로고 절반 67 + 간격 20)
   splashTagline: {
-    marginTop: 20,
+    position: "absolute",
+    top: "50%",
+    marginTop: 87,
     color: "#ffffff",
     fontSize: 13,
     fontWeight: "600",

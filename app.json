@@ -2,7 +2,7 @@
   "expo": {
     "name": "IVE DIVE",
     "slug": "ive-app",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "scheme": "ivedive",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.seokachu.ivedive",
-      "versionCode": 2,
+      "versionCode": 3,
       "googleServicesFile": "./google-services.json",
       "intentFilters": [
         {
@@ -51,7 +51,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/splash-icon.png",
-          "imageWidth": 220,
+          "imageWidth": 134,
           "resizeMode": "contain",
           "backgroundColor": "#e87ec7"
         }
