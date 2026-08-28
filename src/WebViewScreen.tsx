@@ -34,7 +34,7 @@ const SPLASH_SPINNER_MS = 10000;
 const SPLASH_SAFETY_MS = 15000;
 
 /**
- * 네이티브 스플래시(로고만)를 내린다.
+ * 네이티브 스플래시(배경색만)를 내린다.
  *
  * App.tsx 가 자동 숨김을 막아 뒀기 때문에 반드시 누군가는 이걸 불러야 한다 —
  * 오버레이의 첫 레이아웃 · 로드 완료 · 로드 실패 · 최후 안전장치 네 곳에서
@@ -310,7 +310,7 @@ const WebViewScreen = () => {
       )}
       {/* 첫 로딩 동안 시스템 스플래시와 이어지는 브랜드 스플래시 —
           absolute 자식은 SafeAreaView 패딩을 무시하므로 상태바·내비게이션 영역까지 덮는다.
-          첫 onLayout 에서 네이티브를 내려 로고 → 로고+타이틀이 끊김 없이 이어진다 */}
+          첫 onLayout 에서 네이티브(배경색만)를 내려 로고+타이틀이 페이드로 떠오른다 */}
       {splashVisible && (
         <View style={styles.splash} pointerEvents="none" onLayout={hideNativeSplash}>
           <Image source={require("../assets/splash-gradient.png")} style={styles.splashBackground} resizeMode="cover" />
@@ -372,13 +372,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 96,
   },
-  //태그라인을 흐름에서 빼 로고만 화면 정중앙에 오게 한다 — 네이티브 스플래시는
-  //아이콘을 창 정중앙에 두므로, 로고+태그라인을 묶어 정렬하면 로고가 19dp 위로 밀려
-  //이음매에서 로고가 아래로 툭 떨어진다. top 50% + (로고 절반 67 + 간격 20)
   splashTagline: {
-    position: "absolute",
-    top: "50%",
-    marginTop: 87,
+    marginTop: 20,
     color: "#ffffff",
     fontSize: 13,
     fontWeight: "600",
