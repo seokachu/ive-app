@@ -28,6 +28,9 @@ const openIntentUrl = async (url: string) => {
   }
 };
 
+/** APK 다운로드 URL — GitHub 릴리스 자산이나 .apk 로 끝나는 주소 */
+const APK_URL_PATTERN = /\.apk(\?|#|$)|\/releases\/[^?#]*\/download\//i;
+
 /** 로드가 이만큼 길어지면 스플래시에 스피너를 붙인다 — 멈춘 게 아니라는 신호 */
 const SPLASH_SPINNER_MS = 10000;
 /** 이벤트가 전부 누락돼도 스플래시에 갇히지 않게 하는 최후 안전장치 */
@@ -192,6 +195,14 @@ const WebViewScreen = () => {
   // 여러 외부 도메인을 경유하므로, 허용 목록 방식은 흐름 중간에 브라우저로 새어
   // 세션이 끊긴다. 앱 호출 스킴(intent:// 등)만 밖으로 보낸다.
   const handleShouldStartLoad = useCallback((request: { url: string }) => {
+    // APK 파일은 WebView 가 받으면 안 된다 — WebView 의 DownloadManager 알림은 눌러도
+    // 설치기로 넘어가지 않는다. 시스템 브라우저(Chrome)에 넘기면 받은 뒤 바로 설치로 이어진다.
+    // (/download 페이지가 앱 안에서 열렸을 때 GitHub 릴리스 링크로 이동하는 순간 여기서 잡힌다)
+    if (APK_URL_PATTERN.test(request.url)) {
+      Linking.openURL(request.url).catch(() => {});
+      return false;
+    }
+
     if (request.url.startsWith("http://") || request.url.startsWith("https://")) {
       return true;
     }

@@ -2,7 +2,7 @@
   "expo": {
     "name": "IVE DIVE",
     "slug": "ive-app",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "scheme": "ivedive",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.seokachu.ivedive",
-      "versionCode": 4,
+      "versionCode": 5,
       "googleServicesFile": "./google-services.json",
       "intentFilters": [
         {
@@ -22,7 +22,13 @@
           "data": [
             {
               "scheme": "https",
-              "host": "ive-three.vercel.app"
+              "host": "ive-three.vercel.app",
+              "pathPrefix": "/payment"
+            },
+            {
+              "scheme": "https",
+              "host": "ive-three.vercel.app",
+              "pathPrefix": "/mypage/membership/billing"
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]
