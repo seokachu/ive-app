@@ -1,5 +1,8 @@
 export const WEB_URL = "https://ive-three.vercel.app";
 
+// 네이티브 스플래시 → RN 오버레이 페이드 시간. App.tsx(setOptions)와 WebViewScreen(최소 노출 계산)이 같이 쓴다
+export const SPLASH_FADE_MS = 300;
+
 // WebView 안에서 그대로 열어야 하는 호스트.
 // 인증(Supabase, 카카오)과 결제(토스) 리다이렉트는 앱 밖으로 내보내면 흐름이 끊긴다.
 // 앞에 점(.)이 붙은 항목은 서브도메인 전체를 포함한다.

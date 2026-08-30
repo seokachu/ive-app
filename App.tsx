@@ -1,6 +1,7 @@
 import * as SplashScreen from "expo-splash-screen";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import WebViewScreen from "./src/WebViewScreen";
+import { SPLASH_FADE_MS } from "./src/constants";
 
 /**
  * **스플래시는 2단계다** — 웹뷰가 첫 화면을 그릴 때까지 빈 화면이 안 보인다.
@@ -16,7 +17,7 @@ import WebViewScreen from "./src/WebViewScreen";
  * 않는다. 배경색이 같아 페이드 300ms 가 한 장면처럼 이어진다.
  */
 SplashScreen.preventAutoHideAsync().catch(() => {});
-SplashScreen.setOptions({ fade: true, duration: 300 });
+SplashScreen.setOptions({ fade: true, duration: SPLASH_FADE_MS });
 
 //StatusBar는 웹 테마에 따라 동적으로 바뀌어야 하므로 WebViewScreen에서 렌더링한다
 export default function App() {

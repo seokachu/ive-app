@@ -6,7 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import type { WebViewMessageEvent, WebViewNavigation } from "react-native-webview";
 import NetInfo from "@react-native-community/netinfo";
-import { WEB_URL } from "./constants";
+import { SPLASH_FADE_MS, WEB_URL } from "./constants";
 import { isInternalUrl } from "./isInternalUrl";
 import OfflineScreen from "./OfflineScreen";
 import { registerForPushNotificationsAsync, subscribeNotificationNavigation } from "./notifications";
@@ -31,6 +31,13 @@ const openIntentUrl = async (url: string) => {
 /** APK 다운로드 URL — GitHub 릴리스 자산이나 .apk 로 끝나는 주소 */
 const APK_URL_PATTERN = /\.apk(\?|#|$)|\/releases\/[^?#]*\/download\//i;
 
+/**
+ * 브랜드 스플래시 최소 노출. 빠른 회선에서는 웹이 0.3~0.5초 만에 떠서 로고가 뜨자마자
+ * 사라지는 깜빡임이 된다 — 안정감용으로 이만큼은 보여 준다. 읽게 하려는 시간이 아니라
+ * 짧게 잡았고, 로드가 이보다 오래 걸리면 아무 영향 없이 끝나는 즉시 걷는다.
+ * 기준은 페이드가 끝나 로고가 온전히 보이는 시점부터다.
+ */
+const SPLASH_MIN_MS = 1000;
 /** 로드가 이만큼 길어지면 스플래시에 스피너를 붙인다 — 멈춘 게 아니라는 신호 */
 const SPLASH_SPINNER_MS = 10000;
 /** 이벤트가 전부 누락돼도 스플래시에 갇히지 않게 하는 최후 안전장치 */
@@ -63,6 +70,23 @@ const WebViewScreen = () => {
   const [isDarkWeb, setIsDarkWeb] = useState(false);
   //첫 로딩이 끝날 때까지 브랜드 스플래시 오버레이 표시
   const [webLoaded, setWebLoaded] = useState(false);
+  //오버레이 첫 레이아웃 시각 — 네이티브를 내리는 순간이라 여기서 페이드가 시작된다
+  const splashShownAtRef = useRef<number | null>(null);
+  const revealTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  //웹 로드가 끝나면 오버레이를 걷되, 스플래시가 SPLASH_MIN_MS 는 보이도록 남은 시간만큼만 미룬다
+  const revealWeb = useCallback(() => {
+    const shownAt = splashShownAtRef.current ?? Date.now();
+    const remaining = SPLASH_FADE_MS + SPLASH_MIN_MS - (Date.now() - shownAt);
+    if (remaining <= 0) {
+      setWebLoaded(true);
+      return;
+    }
+    clearTimeout(revealTimerRef.current);
+    revealTimerRef.current = setTimeout(() => setWebLoaded(true), remaining);
+  }, []);
+
+  useEffect(() => () => clearTimeout(revealTimerRef.current), []);
   //로드가 SPLASH_SPINNER_MS 를 넘겼는가 — 그때만 오버레이에 스피너를 붙인다.
   //평소에는 브랜드 화면만 보이고, 오래 걸릴 때만 "멈춘 게 아니다"를 알린다
   const [slowLoad, setSlowLoad] = useState(false);
@@ -266,10 +290,9 @@ const WebViewScreen = () => {
           setLoadFailed(false);
         }}
         onLoadEnd={() => {
-          //최소 노출 시간 없이, 웹 로드가 끝나는 즉시 오버레이를 걷는다
           hideNativeSplash();
           webViewReadyRef.current = true;
-          setWebLoaded(true);
+          revealWeb();
           setRefreshing(false);
           injectPushToken();
           if (pendingUrlRef.current) {
@@ -323,7 +346,14 @@ const WebViewScreen = () => {
           absolute 자식은 SafeAreaView 패딩을 무시하므로 상태바·내비게이션 영역까지 덮는다.
           첫 onLayout 에서 네이티브(배경색만)를 내려 로고+타이틀이 페이드로 떠오른다 */}
       {splashVisible && (
-        <View style={styles.splash} pointerEvents="none" onLayout={hideNativeSplash}>
+        <View
+          style={styles.splash}
+          pointerEvents="none"
+          onLayout={() => {
+            splashShownAtRef.current ??= Date.now();
+            hideNativeSplash();
+          }}
+        >
           <Image source={require("../assets/splash-gradient.png")} style={styles.splashBackground} resizeMode="cover" />
           <Image source={require("../assets/splash-logo.png")} style={styles.splashLogo} resizeMode="contain" />
           <Text style={styles.splashTagline}>IVE FAN COMMUNITY</Text>
