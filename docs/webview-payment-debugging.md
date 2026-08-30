@@ -51,6 +51,10 @@
 - 웹: `/.well-known/assetlinks.json` 배포 (서명 지문 등록)
 - 앱: `intentFilters`(autoVerify) + 딥링크로 들어온 URL을 WebView로 라우팅
 - 확인: `adb shell pm get-app-links` → `verified`
+- 범위는 결제 복귀 경로만(`pathPrefix` `/payment`, `/mypage/membership/billing`, v1.0.4).
+  도메인 전체를 잡았을 때는 README QR의 `/download`까지 앱 안 WebView에서 열려,
+  WebView의 다운로드 알림을 눌러도 설치기로 넘어가지 않았다. 앱 안에서 APK 링크를
+  만나면 `Linking.openURL`로 시스템 브라우저에 넘긴다
 
 ## 교훈
 

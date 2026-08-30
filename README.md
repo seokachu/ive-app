@@ -27,9 +27,9 @@ Android 폰 카메라로 QR을 찍거나, 아래 링크로 받는다.
 
 - 배포된 웹을 담는 하이브리드 앱이라, 웹이 갱신되면 앱도 재설치 없이 함께 갱신된다
 - 설치 시 "출처를 알 수 없는 앱" 허용이 필요하다 (스토어 외 배포)
-- 링크는 웹의 다운로드 페이지(`/download`)를 거친다 — 카카오톡·QR 스캐너 등 **인앱
+- 링크는 웹의 다운로드 페이지(`/download`)를 거친다 — 카카오톡 등 **이름이 알려진 인앱
   브라우저는 APK 설치가 막히므로** 감지해서 외부 브라우저로 자동 전환하고, 실제 파일은
-  항상 [최신 릴리즈](https://github.com/seokachu/ive-app/releases/latest)의 APK를 받는다
+  항상 [최신 릴리즈](https://github.com/seokachu/ive-app/releases/latest)의 APK를 직접 받는다
 
 <br clear="right" />
 
@@ -61,13 +61,17 @@ Android 폰 카메라로 QR을 찍거나, 아래 링크로 받는다.
 
 - 결제창·카드사 인증·PG 중계 페이지를 전부 WebView 안에서 처리 (브라우저 이탈 차단)
 - `intent://` 스킴 파싱으로 카드사 앱(SOL페이 등) 실행, 미설치 시 스토어 폴백
-- Android App Links(`assetlinks.json`)로 외부 앱 복귀 시 브라우저가 아닌 앱으로
+- Android App Links(`assetlinks.json`)로 외부 앱 복귀 시 브라우저가 아닌 앱으로 —
+  결제 복귀 경로(`/payment`, `/mypage/membership/billing`)만 앱이 받는다. 도메인 전체를
+  잡으면 README QR의 `/download`까지 앱 안에서 열려 설치로 이어지지 않는다
 - 문제 해결 전 과정: [docs/webview-payment-debugging.md](docs/webview-payment-debugging.md)
 
 ### 3. 앱답게 만드는 UX
 
-- **브랜드 스플래시** — 시스템 스플래시(그라데이션 톤)에서 이어지는 풀스크린 오버레이
-  (그라데이션 + 로고 + IVE FAN COMMUNITY), 웹 첫 로딩이 끝나면 걷힌다
+- **브랜드 스플래시** — 시스템 스플래시(브랜드 배경색만)에서 페이드로 이어지는 풀스크린
+  오버레이(그라데이션 + 로고 + IVE FAN COMMUNITY), 웹 첫 로딩이 끝나면 걷힌다. 로고는
+  최소 1초 보이고(깜빡임 방지), 10초를 넘기면 스피너, 15초 안전장치
+- **히어로 영상 자동재생** — WebView 기본값(사용자 조작 필요)을 풀어 메인 배경 영상이 앱에서도 돈다
 - **뒤로가기** — 웹 히스토리 우선, 첫 화면에서는 "한 번 더 누르면 종료" 토스트 후
   2초 내 재입력 시에만 종료 (실수 종료 방지)
 - **다크 모드 셸 동기화** — 웹 테마가 바뀌면 상태바·세이프에어리어가 함께 바뀐다
