@@ -132,3 +132,8 @@
 - 웹 하단 탭바는 앱 안에서만(`window.ReactNativeWebView` 감지) 탭 전환을 `replace` 로 해
   히스토리를 쌓지 않는다 — 모바일 브라우저는 브라우저 뒤로가기 관행(push)을 유지한다.
   탭 루트 목록(`TAB_ROOT_PATHS`)은 웹 `GNB_ARRAY` 와 같이 바꿔야 한다. (v1.0.6)
+- **오버레이 우선(v1.0.7)**: 앨범 상세 시트처럼 URL 이 안 바뀌는 전체 화면 UI 에서 뒤로가기가 홈으로 가 버렸다.
+  웹 `NavigationBridge` 가 열린 Radix 오버레이(`role="dialog"` · `data-state="open"`)를 MutationObserver 로 감시해
+  `overlay` 메시지로 알리고, 셸은 열려 있으면 경로 판단 전에 `window.__iveCloseOverlay()`(document 에 Escape keydown →
+  Radix 가 최상위 레이어만 닫음)를 불러 그것만 닫는다. 셸은 먼저 false 로 내려 두고 웹이 닫은 뒤 다시 알려 주므로(중첩이면 true 복귀)
+  응답이 없어도 다음 뒤로가기가 막히지 않는다. 전체 문서 로드(`onLoadStart`)에서는 초기화.

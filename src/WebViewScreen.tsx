@@ -61,6 +61,8 @@ const WebViewScreen = () => {
   //현재 웹 경로(외부 도메인이면 null) — 뒤로가기 판단 기준. WebView 내비 이벤트와 웹 NavigationBridge 의
   //route 메시지 두 곳에서 받아 마지막 값을 쓴다 (Android 가 history API 변경을 알려 주는 방식에만 기대지 않는다)
   const currentPathRef = useRef<string | null>(HOME_PATH);
+  //웹에 시트 · 모달(오버레이)이 열려 있는가 — 웹 NavigationBridge 의 overlay 메시지. 열려 있으면 뒤로가기가 페이지 대신 오버레이를 닫는다
+  const overlayOpenRef = useRef(false);
   const webViewReadyRef = useRef(false);
   const pendingUrlRef = useRef<string | null>(null);
   const pushTokenRef = useRef<string | null>(null);
@@ -119,6 +121,8 @@ const WebViewScreen = () => {
         setIsDarkWeb(data.value === "dark");
       } else if (data?.type === "route" && typeof data.path === "string") {
         currentPathRef.current = data.path;
+      } else if (data?.type === "overlay") {
+        overlayOpenRef.current = Boolean(data.open);
       }
     } catch {
       //웹에서 오는 다른 형식의 메시지는 무시
@@ -241,6 +245,7 @@ const WebViewScreen = () => {
     loadFailedRef.current = false;
     setLoadFailed(false);
     currentPathRef.current = HOME_PATH;
+    overlayOpenRef.current = false;
     setWebKey((key) => key + 1);
   }, []);
 
@@ -258,6 +263,7 @@ const WebViewScreen = () => {
   }, [handleGoHome]);
 
   // Android 하드웨어 뒤로가기 — 히스토리가 아니라 현재 경로로 판단한다 (유튜브 · 인스타 방식, docs/decisions.md §9).
+  //   오버레이(앨범 상세 시트 · 모달 · 드로어)가 열려 있으면: 그것만 닫는다 (URL 이 안 바뀌는 전체 화면 UI)
   //   홈: 2초 안에 한 번 더 눌러야 종료 (실수로 앱이 꺼지는 것 방지)
   //   탭 루트(소식 · 음악 · 굿즈샵 · 자유게시판): 히스토리와 무관하게 홈으로
   //   그 외(상세 · 마이페이지 · 결제 · 외부 도메인): 웹 히스토리, 뒤가 없으면(알림 딥링크 진입) 홈으로
@@ -267,6 +273,15 @@ const WebViewScreen = () => {
     if (Platform.OS !== "android") return;
 
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (overlayOpenRef.current) {
+        //웹이 닫은 뒤 상태를 다시 알려 준다(중첩 오버레이가 남아 있으면 true 로 복귀) — 먼저 내려 두어 응답이 없어도 다음 뒤로가기가 막히지 않게
+        overlayOpenRef.current = false;
+        webViewRef.current?.injectJavaScript(
+          `if (typeof window.__iveCloseOverlay === "function") { window.__iveCloseOverlay(); } true;`,
+        );
+        return true;
+      }
+
       const path = currentPathRef.current;
 
       if (path === HOME_PATH) {
@@ -324,6 +339,10 @@ const WebViewScreen = () => {
         onLoad={() => {
           loadFailedRef.current = false;
           setLoadFailed(false);
+        }}
+        //전체 문서가 새로 뜨면(외부 결제 도메인 이동 · 리로드) 오버레이는 사라진 것 — SPA 이동에는 안 불린다
+        onLoadStart={() => {
+          overlayOpenRef.current = false;
         }}
         onLoadEnd={() => {
           hideNativeSplash();
