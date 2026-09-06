@@ -6,8 +6,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import type { WebViewMessageEvent, WebViewNavigation } from "react-native-webview";
 import NetInfo from "@react-native-community/netinfo";
-import { SPLASH_FADE_MS, WEB_URL } from "./constants";
+import { EXIT_DOUBLE_PRESS_MS, HOME_PATH, SPLASH_FADE_MS, TAB_ROOT_PATHS, WEB_URL } from "./constants";
 import { isInternalUrl } from "./isInternalUrl";
+import { getWebPath } from "./webPath";
 import OfflineScreen from "./OfflineScreen";
 import { registerForPushNotificationsAsync, subscribeNotificationNavigation } from "./notifications";
 
@@ -57,6 +58,9 @@ const hideNativeSplash = () => {
 const WebViewScreen = () => {
   const webViewRef = useRef<WebView>(null);
   const canGoBackRef = useRef(false);
+  //현재 웹 경로(외부 도메인이면 null) — 뒤로가기 판단 기준. WebView 내비 이벤트와 웹 NavigationBridge 의
+  //route 메시지 두 곳에서 받아 마지막 값을 쓴다 (Android 가 history API 변경을 알려 주는 방식에만 기대지 않는다)
+  const currentPathRef = useRef<string | null>(HOME_PATH);
   const webViewReadyRef = useRef(false);
   const pendingUrlRef = useRef<string | null>(null);
   const pushTokenRef = useRef<string | null>(null);
@@ -113,6 +117,8 @@ const WebViewScreen = () => {
       const data = JSON.parse(event.nativeEvent.data);
       if (data?.type === "theme") {
         setIsDarkWeb(data.value === "dark");
+      } else if (data?.type === "route" && typeof data.path === "string") {
+        currentPathRef.current = data.path;
       }
     } catch {
       //웹에서 오는 다른 형식의 메시지는 무시
@@ -174,29 +180,6 @@ const WebViewScreen = () => {
     return () => subscription.remove();
   }, [navigateTo]);
 
-  // 안드로이드 하드웨어 뒤로가기 → 웹 히스토리 우선,
-  // 첫 화면이면 2초 안에 한 번 더 눌러야 종료 (실수로 앱이 꺼지는 것 방지)
-  const lastBackPressRef = useRef(0);
-  useEffect(() => {
-    if (Platform.OS !== "android") return;
-
-    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (canGoBackRef.current) {
-        webViewRef.current?.goBack();
-        return true;
-      }
-
-      const now = Date.now();
-      if (now - lastBackPressRef.current <= 2000) {
-        return false; // 기본 동작 = 앱 종료
-      }
-      lastBackPressRef.current = now;
-      ToastAndroid.show("한 번 더 누르면 앱이 종료돼요", ToastAndroid.SHORT);
-      return true;
-    });
-    return () => subscription.remove();
-  }, []);
-
   // 연결이 끊기면 오프라인 화면, 복구되면 실패했던 페이지를 자동으로 다시 불러온다
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
@@ -213,6 +196,7 @@ const WebViewScreen = () => {
 
   const handleNavigationStateChange = useCallback((navigation: WebViewNavigation) => {
     canGoBackRef.current = navigation.canGoBack;
+    currentPathRef.current = getWebPath(navigation.url);
   }, []);
 
   // http/https는 전부 WebView 안에서 처리한다. 결제(토스→카드사 인증→PG 중계)가
@@ -256,8 +240,60 @@ const WebViewScreen = () => {
   const handleGoHome = useCallback(() => {
     loadFailedRef.current = false;
     setLoadFailed(false);
+    currentPathRef.current = HOME_PATH;
     setWebKey((key) => key + 1);
   }, []);
+
+  // 홈으로 — 웹 NavigationBridge 가 열어 둔 라우터 진입점으로 SPA 이동한다(리로드 없음).
+  // 진입점이 없는 페이지(외부 결제 도메인 · 구버전 웹)는 location.replace, 로드 실패 상태는 처음부터 다시 연다.
+  const goHome = useCallback(() => {
+    if (loadFailedRef.current) {
+      handleGoHome();
+      return;
+    }
+    webViewRef.current?.injectJavaScript(
+      `if (typeof window.__iveNavigate === "function") { window.__iveNavigate(${JSON.stringify(HOME_PATH)}, true); }` +
+        ` else { window.location.replace(${JSON.stringify(WEB_URL)}); } true;`,
+    );
+  }, [handleGoHome]);
+
+  // Android 하드웨어 뒤로가기 — 히스토리가 아니라 현재 경로로 판단한다 (유튜브 · 인스타 방식, docs/decisions.md §9).
+  //   홈: 2초 안에 한 번 더 눌러야 종료 (실수로 앱이 꺼지는 것 방지)
+  //   탭 루트(소식 · 음악 · 굿즈샵 · 자유게시판): 히스토리와 무관하게 홈으로
+  //   그 외(상세 · 마이페이지 · 결제 · 외부 도메인): 웹 히스토리, 뒤가 없으면(알림 딥링크 진입) 홈으로
+  // 히스토리만 따라가면 탭을 오간 만큼 뒤로가기가 끝없이 이어지던 것을 "상세 → 탭 루트 → 홈 → 종료"로 끊는다.
+  const lastBackPressRef = useRef(0);
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      const path = currentPathRef.current;
+
+      if (path === HOME_PATH) {
+        const now = Date.now();
+        if (now - lastBackPressRef.current <= EXIT_DOUBLE_PRESS_MS) {
+          return false; // 기본 동작 = 앱 종료
+        }
+        lastBackPressRef.current = now;
+        ToastAndroid.show("한 번 더 누르면 앱이 종료돼요", ToastAndroid.SHORT);
+        return true;
+      }
+
+      if (path !== null && TAB_ROOT_PATHS.includes(path)) {
+        goHome();
+        return true;
+      }
+
+      if (canGoBackRef.current) {
+        webViewRef.current?.goBack();
+        return true;
+      }
+
+      goHome();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [goHome]);
 
   const handleLoadError = useCallback(() => {
     //오프라인 화면이 스플래시 뒤에 가려지지 않게 먼저 내린다

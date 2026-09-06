@@ -14,3 +14,10 @@ export const INTERNAL_HOSTS = [
   ".tosspayments.com",
   ".toss.im",
 ];
+
+// Android 하드웨어 뒤로가기 기준 (WebViewScreen, docs/decisions.md §9).
+// 홈: 2초 안에 두 번 눌러 종료 · 탭 루트: 홈으로 · 그 외(상세 등): 웹 히스토리.
+// 탭 루트는 웹 하단 탭바(BottomNav = GNB_ARRAY)와 같이 바꾼다.
+export const HOME_PATH = "/";
+export const TAB_ROOT_PATHS = ["/news", "/discography", "/shop", "/board"];
+export const EXIT_DOUBLE_PRESS_MS = 2000;
