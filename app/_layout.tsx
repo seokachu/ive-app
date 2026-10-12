@@ -1,7 +1,9 @@
+import { Platform } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import WebViewScreen from "./src/WebViewScreen";
-import { SPLASH_FADE_MS } from "./src/constants";
+import WebViewScreen from "../src/WebViewScreen";
+import IosTabsLayout from "../src/ios/IosTabsLayout";
+import { SPLASH_FADE_MS } from "../src/constants";
 
 /**
  * **스플래시는 2단계다** — 웹뷰가 첫 화면을 그릴 때까지 빈 화면이 안 보인다.
@@ -19,11 +21,9 @@ import { SPLASH_FADE_MS } from "./src/constants";
 SplashScreen.preventAutoHideAsync().catch(() => {});
 SplashScreen.setOptions({ fade: true, duration: SPLASH_FADE_MS });
 
-//StatusBar는 웹 테마에 따라 동적으로 바뀌어야 하므로 WebViewScreen에서 렌더링한다
-export default function App() {
-  return (
-    <SafeAreaProvider>
-      <WebViewScreen />
-    </SafeAreaProvider>
-  );
+// iOS 는 시스템 탭바(Liquid Glass) + 탭별 WebView, Android 는 웹 탭바를 쓰는 단일 WebView 그대로.
+// Android 에서는 라우트(app/index 등)를 쓰지 않는다 — 뒤로가기 · 당겨서 새로고침 등은 WebViewScreen 이 처리한다.
+//StatusBar는 웹 테마에 따라 동적으로 바뀌어야 하므로 각 셸에서 렌더링한다
+export default function RootLayout() {
+  return <SafeAreaProvider>{Platform.OS === "ios" ? <IosTabsLayout /> : <WebViewScreen />}</SafeAreaProvider>;
 }

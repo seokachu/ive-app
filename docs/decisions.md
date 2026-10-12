@@ -137,3 +137,21 @@
   `overlay` 메시지로 알리고, 셸은 열려 있으면 경로 판단 전에 `window.__iveCloseOverlay()`(document 에 Escape keydown →
   Radix 가 최상위 레이어만 닫음)를 불러 그것만 닫는다. 셸은 먼저 false 로 내려 두고 웹이 닫은 뒤 다시 알려 주므로(중첩이면 true 복귀)
   응답이 없어도 다음 뒤로가기가 막히지 않는다. 전체 문서 로드(`onLoadStart`)에서는 초기화.
+
+## 10. iOS 하단 탭바 — 웹 탭바 대신 시스템 탭바(Liquid Glass)
+
+**선택: iOS 만 expo-router NativeTabs(UITabBar) + 탭별 WebView, Android 는 웹 탭바 단일 WebView 유지 (v1.0.8)**
+
+- iOS 26 의 Liquid Glass 탭바(누르면 커지는 렌즈 · 드래그로 탭 이동)는 시스템 탭바에만 붙는다. 웹 CSS 로는
+  굴절(SVG `feDisplacementMap` backdrop)이 WKWebView 에서 동작하지 않아 흉내만 가능해서 네이티브로 바꿨다.
+  Android 는 시스템 탭바가 Material 3 모양이라 지금 웹 글라스 탭바를 그대로 쓴다.
+- 시스템 탭바는 탭마다 화면이 따로라 탭별 WebView(`src/ios/TabWebView`)를 둔다 — 탭별 스크롤 · 히스토리가
+  유지되는 네이티브 앱 방식. 쿠키 · localStorage 는 WKWebView 기본 데이터 저장소를 공유해 로그인은 그대로 이어진다.
+  테마 · 푸시 토큰 · 스플래시는 셸(`src/ios/IosTabsLayout`)이 한 번만 갖는다.
+- 웹 코드는 건드리지 않는다. 앱이 `adoptedStyleSheets` 로 웹 하단 탭바(`nav[aria-label="하단 메뉴"]`)를 숨기고
+  `--tabbar-h` 를 세이프에어리어(= 시스템 탭바 높이)로 덮어쓴다 — `<style>` 주입은 React 하이드레이션이 지울 수 있다.
+- 같은 탭을 다시 누르면 그 탭 루트로(`__iveNavigate(path, true)`), 알림 · 딥링크는 경로가 속한 탭으로 전환 후 그 WebView 를 이동.
+  탭 목록(`src/tabs.ts`)은 `TAB_ROOT_PATHS` · 웹 `GNB_ARRAY` 와 같이 바꾼다.
+- **iOS 27 Scene 생명주기**: iOS 27 은 Scene 을 쓰지 않는 앱을 실행 직후 종료한다. prebuild 템플릿의 AppDelegate 가 아직
+  옛 방식이라 `plugins/withSceneLifecycle.js` 가 Info.plist 씬 매니페스트(`EXExpoAppSceneDelegate`)와 AppDelegate 를 바꾼다.
+- 진입점이 `expo-router/entry` 로 바뀌었다(`app/_layout`). Android 는 레이아웃이 `WebViewScreen` 을 바로 그려 라우트를 쓰지 않는다.

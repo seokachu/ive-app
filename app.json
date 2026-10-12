@@ -2,7 +2,7 @@
   "expo": {
     "name": "IVE DIVE",
     "slug": "ive-app",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "scheme": "ivedive",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.seokachu.ivedive",
-      "versionCode": 8,
+      "versionCode": 9,
       "googleServicesFile": "./google-services.json",
       "intentFilters": [
         {
@@ -60,7 +60,9 @@
           "resizeMode": "contain",
           "backgroundColor": "#e87ec7"
         }
-      ]
+      ],
+      "expo-router",
+      "./plugins/withSceneLifecycle"
     ],
     "extra": {
       "eas": {
